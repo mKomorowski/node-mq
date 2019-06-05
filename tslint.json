@@ -1,0 +1,9 @@
+{
+  "extends": ["tslint:recommended"],
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "quotemark": [true, "single", "avoid-escape", "avoid-template"]
+  }
+}

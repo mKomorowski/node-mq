@@ -1,5 +1,12 @@
 import * as amqplib from 'amqplib';
 
+export type Publisher = (binding: string, message: string | object) => void;
+export enum exchangeTypes {
+  direct = 'direct',
+  fanout = 'fanout',
+  topic = 'topic',
+}
+
 class AMQP {
   private readonly url: string;
   private connection: amqplib.Connection | undefined;
@@ -23,9 +30,29 @@ class AMQP {
         connection
           .createChannel()
           .then((channel: amqplib.Channel) => resolve(channel))
-          .catch((err: Error) => reject(err));
+          .catch(reject);
       })
-      .catch((err: Error) => reject(err));
+      .catch(reject);
+    });
+  }
+
+  public createPublisher(exchange: string, type: exchangeTypes): Promise<Publisher> {
+    return new Promise((resolve, reject) => {
+      this.createChannel()
+        .then((channel: amqplib.Channel) => {
+          channel
+            .assertExchange(exchange, type)
+            .then(() => {
+              const publisher: Publisher = (key, message) => {
+                const messageString = typeof message === 'string' ? message : JSON.stringify(message);
+
+                channel.publish(exchange, key, Buffer.from(messageString));
+              };
+
+              resolve(publisher);
+            })
+            .catch(reject);
+      }).catch(reject);
     });
   }
 
@@ -39,9 +66,10 @@ class AMQP {
       .connect(this.url)
       .then((connection: amqplib.Connection) => {
         this.connection = connection;
+
         resolve(this.connection);
       })
-      .catch((err: Error) => reject(err));
+      .catch(reject);
     });
   }
 }
